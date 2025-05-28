@@ -435,10 +435,20 @@ def framepack_image_to_video():
 @app.route('/api/download/<filename>', methods=['GET'])
 def download_file(filename):
     try:
-        file_path = f"/workspace/ComfyUI/output/{filename}"
+        # Check multiple possible locations for the file
+        possible_paths = [
+            f"/workspace/ComfyUI/output/{filename}",
+            f"/tmp/latentsync_b9e6a424/latentsync_1076d504/{filename}"
+        ]
         
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'File not found'}), 404
+        file_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                file_path = path
+                break
+        
+        if not file_path:
+            return jsonify({'error': 'File not found in any of the expected locations'}), 404
             
         # Determine content type based on file extension
         content_type = 'application/octet-stream'
@@ -450,6 +460,8 @@ def download_file(filename):
             content_type = 'video/mp4'
         elif filename.endswith('.gif'):
             content_type = 'image/gif'
+        
+        logger.debug(f"Serving file from: {file_path}")
         
         return send_file(
             file_path,
