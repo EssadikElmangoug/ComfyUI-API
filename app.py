@@ -198,9 +198,9 @@ def wan_image_to_video():
            image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             return jsonify({'error': 'Invalid file type. Allowed types: png, jpg, jpeg, gif'}), 400
         
-        # Save the uploaded image to ComfyUI's input directory using relative path
+        # Save the uploaded image to ComfyUI's input directory
         filename = secure_filename(image_file.filename)
-        input_dir = 'ComfyUI/input'
+        input_dir = '/workspace/ComfyUI/input'  # Use absolute path
         os.makedirs(input_dir, exist_ok=True)
         image_path = os.path.join(input_dir, filename)
         
@@ -211,7 +211,9 @@ def wan_image_to_video():
         if not os.path.exists(image_path):
             return jsonify({'error': 'Failed to save image file'}), 500
             
-        logger.debug(f"Processing request with image: {filename} and prompt: {prompt}")
+        logger.debug(f"Saved image to: {image_path}")
+        logger.debug(f"File exists: {os.path.exists(image_path)}")
+        logger.debug(f"File size: {os.path.getsize(image_path)} bytes")
         
         # Load the Wan workflow template
         try:
