@@ -1,0 +1,7 @@
+venv/
+ComfyUI/
+ComfyUI/input/
+ComfyUI/output/
+ComfyUI/models/
+ComfyUI/models/checkpoints/
+ComfyUI/models/embeddings/

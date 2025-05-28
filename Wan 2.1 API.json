@@ -1,0 +1,205 @@
+{
+  "3": {
+    "inputs": {
+      "seed": 1039615845775666,
+      "steps": 20,
+      "cfg": 6,
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "50",
+        0
+      ],
+      "negative": [
+        "50",
+        1
+      ],
+      "latent_image": [
+        "50",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "A cinematic slow-motion video of a young professional male in his mid-20s, with neatly styled dark brown hair, clean-shaven face, and warm brown eyes. He wears a navy blue blazer over a crisp white shirt. The scene is shot in a softly lit, modern office setting with a neutral blurred background. The camera slowly zooms in as he turns slightly toward it and begins to smile warmly. His smile grows naturally, conveying confidence, approachability, and calm charisma. Natural lighting with soft shadows highlights his face, eyes catching the light with a subtle sparkle. Gentle lens flares and smooth depth of field give the video a polished, professional feel.",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "37": {
+    "inputs": {
+      "unet_name": "wan2.1_t2v_1.3B_fp16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "38": {
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "49": {
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    },
+    "class_type": "CLIPVisionLoader",
+    "_meta": {
+      "title": "Load CLIP Vision"
+    }
+  },
+  "50": {
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "length": 33,
+      "batch_size": 1,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "clip_vision_output": [
+        "51",
+        0
+      ],
+      "start_image": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "WanImageToVideo",
+    "_meta": {
+      "title": "WanImageToVideo"
+    }
+  },
+  "51": {
+    "inputs": {
+      "crop": "none",
+      "clip_vision": [
+        "49",
+        0
+      ],
+      "image": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "CLIPVisionEncode",
+    "_meta": {
+      "title": "CLIP Vision Encode"
+    }
+  },
+  "52": {
+    "inputs": {
+      "image": "example.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "54": {
+    "inputs": {
+      "shift": 8,
+      "model": [
+        "37",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "ModelSamplingSD3"
+    }
+  },
+  "55": {
+    "inputs": {
+      "frame_rate": 8,
+      "loop_count": 0,
+      "filename_prefix": "AnimateDiff",
+      "format": "video/h265-mp4",
+      "pix_fmt": "yuv420p10le",
+      "crf": 22,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  }
+}
