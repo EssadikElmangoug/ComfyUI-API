@@ -346,17 +346,36 @@ def framepack_image_to_video():
         end_image = request.files['end_image']
         prompt = request.form.get('prompt', '')
         
-        # Save the uploaded images to ComfyUI's input directory using relative path
+        # Validate file types
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+        for image_file in [start_image, end_image]:
+            if '.' not in image_file.filename or \
+               image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+                return jsonify({'error': f'Invalid file type for {image_file.filename}. Allowed types: png, jpg, jpeg, gif'}), 400
+        
+        # Save the uploaded images to ComfyUI's input directory
         start_filename = secure_filename(start_image.filename)
         end_filename = secure_filename(end_image.filename)
-        start_path = os.path.join('ComfyUI/input', start_filename)
-        end_path = os.path.join('ComfyUI/input', end_filename)
-        os.makedirs('ComfyUI/input', exist_ok=True)
+        input_dir = '/workspace/ComfyUI/input'  # Use absolute path
+        os.makedirs(input_dir, exist_ok=True)
         
+        start_path = os.path.join(input_dir, start_filename)
+        end_path = os.path.join(input_dir, end_filename)
+        
+        # Save the files
         start_image.save(start_path)
         end_image.save(end_path)
         
-        logger.debug(f"Processing request with start_image: {start_filename}, end_image: {end_filename}, prompt: {prompt}")
+        # Verify the files were saved successfully
+        if not os.path.exists(start_path) or not os.path.exists(end_path):
+            return jsonify({'error': 'Failed to save image files'}), 500
+            
+        logger.debug(f"Saved start image to: {start_path}")
+        logger.debug(f"Start image exists: {os.path.exists(start_path)}")
+        logger.debug(f"Start image size: {os.path.getsize(start_path)} bytes")
+        logger.debug(f"Saved end image to: {end_path}")
+        logger.debug(f"End image exists: {os.path.exists(end_path)}")
+        logger.debug(f"End image size: {os.path.getsize(end_path)} bytes")
         
         # Load the FramePack workflow template
         try:
