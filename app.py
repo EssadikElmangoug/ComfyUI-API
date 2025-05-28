@@ -62,6 +62,10 @@ def check_completion_status(prompt_id):
         logger.error(f"Error checking completion status: {str(e)}")
         raise
 
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'message': 'Hello, This is the API home page'})
+
 @app.route('/api/flux-text-to-image', methods=['POST'])
 def flux_text_to_image():
     try:
