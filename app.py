@@ -192,12 +192,25 @@ def wan_image_to_video():
         image_file = request.files['image']
         prompt = request.form.get('prompt', '')
         
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+        if '.' not in image_file.filename or \
+           image_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+            return jsonify({'error': 'Invalid file type. Allowed types: png, jpg, jpeg, gif'}), 400
+        
         # Save the uploaded image to ComfyUI's input directory using relative path
         filename = secure_filename(image_file.filename)
-        image_path = os.path.join('ComfyUI/input', filename)
-        os.makedirs('ComfyUI/input', exist_ok=True)
+        input_dir = 'ComfyUI/input'
+        os.makedirs(input_dir, exist_ok=True)
+        image_path = os.path.join(input_dir, filename)
+        
+        # Save the file
         image_file.save(image_path)
         
+        # Verify the file was saved successfully
+        if not os.path.exists(image_path):
+            return jsonify({'error': 'Failed to save image file'}), 500
+            
         logger.debug(f"Processing request with image: {filename} and prompt: {prompt}")
         
         # Load the Wan workflow template
@@ -209,7 +222,7 @@ def wan_image_to_video():
         
         # Update the workflow for image-to-video
         workflow['37']['inputs']['unet_name'] = "wan2.1_i2v_720p_14B_fp8_e4m3fn.safetensors"
-        workflow['52']['inputs']['image'] = filename  # Use just the filename instead of full path
+        workflow['52']['inputs']['image'] = filename  # Use just the filename
         workflow['6']['inputs']['text'] = prompt
         
         # Format the workflow for ComfyUI
