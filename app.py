@@ -209,7 +209,7 @@ def wan_image_to_video():
         
         # Update the workflow for image-to-video
         workflow['37']['inputs']['unet_name'] = "wan2.1_i2v_720p_14B_fp8_e4m3fn.safetensors"
-        workflow['52']['inputs']['image'] = image_path
+        workflow['52']['inputs']['image'] = filename  # Use just the filename instead of full path
         workflow['6']['inputs']['text'] = prompt
         
         # Format the workflow for ComfyUI
