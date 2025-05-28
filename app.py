@@ -171,7 +171,7 @@ def check_status(process_id):
                     return jsonify({
                         "process_id": process_id, 
                         "status": history[process_id]['status']['status_str'], 
-                        # "output": outputs,
+                        "output": outputs,
                         "file_name": file_name
                     })
                 else:
