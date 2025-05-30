@@ -5,8 +5,7 @@ import time
 import os
 import logging
 from werkzeug.utils import secure_filename
-from pymongo import MongoClient
-from bson.objectid import ObjectId
+import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import string
@@ -15,11 +14,42 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
 
-# MongoDB Configuration
-client = MongoClient('mongodb://localhost:27017/')
-db = client['comfyui']
-users_collection = db['users']
-api_keys_collection = db['api_keys']
+# SQLite Configuration
+DB_PATH = 'comfyui.db'
+
+def init_db():
+    """Initialize the SQLite database"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # Create users table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            is_admin BOOLEAN NOT NULL DEFAULT 0
+        )
+    ''')
+    
+    # Create api_keys table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            api_key TEXT UNIQUE NOT NULL,
+            created_at REAL NOT NULL
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def get_db():
+    """Get database connection"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  # This enables column access by name
+    return conn
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -55,9 +85,12 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        user = users_collection.find_one({'username': username})
+        conn = get_db()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        conn.close()
+        
         if user and check_password_hash(user['password'], password):
-            session['user_id'] = str(user['_id'])
+            session['user_id'] = user['id']
             return redirect(url_for('admin_dashboard'))
         
         flash('Invalid username or password')
@@ -71,7 +104,9 @@ def logout():
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    api_keys = list(api_keys_collection.find())
+    conn = get_db()
+    api_keys = conn.execute('SELECT * FROM api_keys').fetchall()
+    conn.close()
     return render_template('admin.html', api_keys=api_keys)
 
 @app.route('/admin/generate-api-key', methods=['POST'])
@@ -83,20 +118,23 @@ def generate_new_api_key():
         return redirect(url_for('admin_dashboard'))
     
     api_key = generate_api_key()
-    api_keys_collection.insert_one({
-        'name': name,
-        'api_key': api_key,
-        'created_at': time.time()
-    })
+    conn = get_db()
+    conn.execute('INSERT INTO api_keys (name, api_key, created_at) VALUES (?, ?, ?)',
+                (name, api_key, time.time()))
+    conn.commit()
+    conn.close()
     
     flash('API key generated successfully')
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/delete-api-key/<key_id>', methods=['POST'])
+@app.route('/admin/delete-api-key/<int:key_id>', methods=['POST'])
 @login_required
 def delete_api_key(key_id):
     try:
-        api_keys_collection.delete_one({'_id': ObjectId(key_id)})
+        conn = get_db()
+        conn.execute('DELETE FROM api_keys WHERE id = ?', (key_id,))
+        conn.commit()
+        conn.close()
         flash('API key deleted successfully')
     except Exception as e:
         flash('Error deleting API key')
@@ -104,15 +142,18 @@ def delete_api_key(key_id):
 
 # Create initial admin user if none exists
 def create_initial_admin():
-    if users_collection.count_documents({}) == 0:
+    conn = get_db()
+    user = conn.execute('SELECT * FROM users').fetchone()
+    if not user:
         admin_password = generate_api_key(12)  # Generate a random password
-        users_collection.insert_one({
-            'username': 'admin',
-            'password': generate_password_hash(admin_password),
-            'is_admin': True
-        })
+        conn.execute('INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)',
+                    ('admin', generate_password_hash(admin_password), True))
+        conn.commit()
         logger.info(f"Created initial admin user with password: {admin_password}")
+    conn.close()
 
+# Initialize database and create admin user
+init_db()
 create_initial_admin()
 
 # Load workflow templates
