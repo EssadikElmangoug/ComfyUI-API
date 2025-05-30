@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # ComfyUI API endpoint
-COMFYUI_URL = "https://r9mu8pq2ipcfw9-8188.proxy.runpod.net"
+COMFYUI_URL = "http://localhost:8188"
 
 # Headers to prevent caching
 NO_CACHE_HEADERS = {
