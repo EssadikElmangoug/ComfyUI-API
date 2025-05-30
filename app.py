@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # ComfyUI API endpoint
-# COMFYUI_URL = "http://localhost:8188"
+COMFYUI_URL = "http://localhost:8188"
 
 # Headers to prevent caching
 NO_CACHE_HEADERS = {
