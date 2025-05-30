@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import string
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
@@ -77,6 +78,29 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
+    return decorated_function
+
+def api_key_required(f):
+    """Decorator to require API key for certain routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is required'}), 401
+        
+        # Remove 'Key ' prefix if present
+        if api_key.startswith('Key '):
+            api_key = api_key[4:]
+        
+        # Verify API key exists in database
+        conn = get_db()
+        key = conn.execute('SELECT * FROM api_keys WHERE api_key = ?', (api_key,)).fetchone()
+        conn.close()
+        
+        if not key:
+            return jsonify({'error': 'Invalid API key'}), 401
+            
+        return f(*args, **kwargs)
     return decorated_function
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -201,6 +225,7 @@ def home():
     return jsonify({'message': 'Hello, This is the API home page'})
 
 @app.route('/api/flux-text-to-image', methods=['POST'])
+@api_key_required
 def flux_text_to_image():
     try:
         # Validate request data
@@ -287,6 +312,7 @@ def flux_text_to_image():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/status/<process_id>', methods=['GET'])
+@api_key_required
 def check_status(process_id):
     try:
         result = requests.get(f"{COMFYUI_URL}/history/{process_id}", headers=NO_CACHE_HEADERS)
@@ -322,6 +348,7 @@ def check_status(process_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/wan-image-to-video', methods=['POST'])
+@api_key_required
 def wan_image_to_video():
     try:
         if 'image' not in request.files:
@@ -425,6 +452,7 @@ def wan_image_to_video():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/wan-text-to-video', methods=['POST'])
+@api_key_required
 def wan_text_to_video():
     try:
         data = request.json
@@ -508,6 +536,7 @@ def wan_text_to_video():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/framepack-image-to-video', methods=['POST'])
+@api_key_required
 def framepack_image_to_video():
     try:
         if 'start_image' not in request.files or 'end_image' not in request.files:
@@ -604,6 +633,7 @@ def framepack_image_to_video():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/download/<filename>', methods=['GET'])
+@api_key_required
 def download_file(filename):
     try:
         # Check multiple possible locations for the file
