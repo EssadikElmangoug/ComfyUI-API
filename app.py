@@ -1,12 +1,25 @@
-from flask import Flask, request, jsonify, Response, send_file
+from flask import Flask, request, jsonify, Response, send_file, render_template, redirect, url_for, flash, session
 import requests
 import json
 import time
 import os
 import logging
 from werkzeug.utils import secure_filename
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
+import string
+from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # For session management
+
+# MongoDB Configuration
+client = MongoClient('mongodb://localhost:27017/')
+db = client['comfyui']
+users_collection = db['users']
+api_keys_collection = db['api_keys']
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -21,6 +34,86 @@ NO_CACHE_HEADERS = {
     'Pragma': 'no-cache',
     'Expires': '0'
 }
+
+def generate_api_key(length=32):
+    """Generate a random API key"""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def login_required(f):
+    """Decorator to require login for certain routes"""
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = users_collection.find_one({'username': username})
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = str(user['_id'])
+            return redirect(url_for('admin_dashboard'))
+        
+        flash('Invalid username or password')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('login'))
+
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    api_keys = list(api_keys_collection.find())
+    return render_template('admin.html', api_keys=api_keys)
+
+@app.route('/admin/generate-api-key', methods=['POST'])
+@login_required
+def generate_new_api_key():
+    name = request.form.get('name')
+    if not name:
+        flash('Name is required')
+        return redirect(url_for('admin_dashboard'))
+    
+    api_key = generate_api_key()
+    api_keys_collection.insert_one({
+        'name': name,
+        'api_key': api_key,
+        'created_at': time.time()
+    })
+    
+    flash('API key generated successfully')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/delete-api-key/<key_id>', methods=['POST'])
+@login_required
+def delete_api_key(key_id):
+    try:
+        api_keys_collection.delete_one({'_id': ObjectId(key_id)})
+        flash('API key deleted successfully')
+    except Exception as e:
+        flash('Error deleting API key')
+    return redirect(url_for('admin_dashboard'))
+
+# Create initial admin user if none exists
+def create_initial_admin():
+    if users_collection.count_documents({}) == 0:
+        admin_password = generate_api_key(12)  # Generate a random password
+        users_collection.insert_one({
+            'username': 'admin',
+            'password': generate_password_hash(admin_password),
+            'is_admin': True
+        })
+        logger.info(f"Created initial admin user with password: {admin_password}")
+
+create_initial_admin()
 
 # Load workflow templates
 def load_workflow(workflow_name):
@@ -510,6 +603,11 @@ def download_file(filename):
     except Exception as e:
         logger.error(f"Error downloading file {filename}: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# Add template filter for datetime formatting
+@app.template_filter('datetime')
+def format_datetime(timestamp):
+    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000, debug=True)
