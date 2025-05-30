@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # ComfyUI API endpoint
-COMFYUI_URL = "http://localhost:8188"
+# COMFYUI_URL = "http://localhost:8188"
 
 # Headers to prevent caching
 NO_CACHE_HEADERS = {
@@ -196,6 +196,21 @@ def wan_image_to_video():
         image_file = request.files['image']
         prompt = request.form.get('prompt', '')
         
+        # Get optional parameters with defaults
+        width = request.form.get('width', 512)
+        height = request.form.get('height', 512)
+        video_length = request.form.get('video_length', 4)  # Default 4 seconds
+        
+        # Validate numeric parameters
+        try:
+            width = int(width)
+            height = int(height)
+            video_length = int(video_length)
+            if width <= 0 or height <= 0 or video_length <= 0:
+                return jsonify({'error': 'width, height, and video_length must be positive integers'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'error': 'width, height, and video_length must be valid integers'}), 400
+        
         # Validate file type
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
         if '.' not in image_file.filename or \
@@ -230,6 +245,9 @@ def wan_image_to_video():
         workflow['37']['inputs']['unet_name'] = "wan2.1_i2v_720p_14B_fp8_e4m3fn.safetensors"
         workflow['52']['inputs']['image'] = filename  # Use just the filename
         workflow['6']['inputs']['text'] = prompt
+        workflow['50']['inputs']['width'] = width
+        workflow['50']['inputs']['height'] = height
+        workflow['50']['inputs']['length'] = video_length * 8  # Convert seconds to frames (8 fps)
         
         # Format the workflow for ComfyUI
         prompt_data = {
@@ -285,6 +303,21 @@ def wan_text_to_video():
             
         negative_prompt = ''
         
+        # Get optional parameters with defaults
+        width = data.get('width', 512)
+        height = data.get('height', 512)
+        video_length = data.get('video_length', 4)  # Default 4 seconds
+        
+        # Validate numeric parameters
+        try:
+            width = int(width)
+            height = int(height)
+            video_length = int(video_length)
+            if width <= 0 or height <= 0 or video_length <= 0:
+                return jsonify({'error': 'width, height, and video_length must be positive integers'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'error': 'width, height, and video_length must be valid integers'}), 400
+        
         logger.debug(f"Processing request with prompt: {prompt}")
         
         # Load the Wan workflow template
@@ -298,9 +331,9 @@ def wan_text_to_video():
         workflow['37']['inputs']['unet_name'] = "wan2.1_t2v_1.3B_fp16.safetensors"
         workflow['6']['inputs']['text'] = prompt
         workflow['7']['inputs']['text'] = negative_prompt
-        
-        # Set default image for the workflow
-        workflow['52']['inputs']['image'] = "example.png"
+        workflow['50']['inputs']['width'] = width
+        workflow['50']['inputs']['height'] = height
+        workflow['50']['inputs']['length'] = video_length * 8  # Convert seconds to frames (8 fps)
         
         # Format the workflow for ComfyUI
         prompt_data = {

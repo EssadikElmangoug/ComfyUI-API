@@ -54,6 +54,9 @@ Generate videos from an image using the Wan model.
 |-----------|------|----------|-------------|
 | image | file | Yes | Input image file (PNG, JPG). The file will be saved in ComfyUI's input directory. |
 | prompt | string | No | Text description to guide the video generation |
+| width | number | No | Width of the generated video (default: 512) |
+| height | number | No | Height of the generated video (default: 512) |
+| video_length | number | No | Length of the video in seconds (default: 4) |
 
 ### Response
 ```json
@@ -68,7 +71,10 @@ Generate videos from an image using the Wan model.
 # Using curl
 curl -X POST http://localhost:5000/api/wan-image-to-video \
   -F "image=@/path/to/your/image.png" \
-  -F "prompt=cinematic slow motion scene"
+  -F "prompt=cinematic slow motion scene" \
+  -F "width=768" \
+  -F "height=432" \
+  -F "video_length=6"
 
 # Using Python requests
 import requests
@@ -78,7 +84,10 @@ files = {
     'image': ('image.png', open('path/to/your/image.png', 'rb'), 'image/png')
 }
 data = {
-    'prompt': 'cinematic slow motion scene'
+    'prompt': 'cinematic slow motion scene',
+    'width': 768,
+    'height': 432,
+    'video_length': 6
 }
 
 response = requests.post(url, files=files, data=data)
@@ -96,7 +105,10 @@ Generate videos from text using the Wan model.
 ```json
 {
     "prompt": "string",           // Required: Text description of the video to generate
-    "negative_prompt": "string"   // Optional: Text description of what to avoid in the video
+    "negative_prompt": "string",  // Optional: Text description of what to avoid in the video
+    "width": number,             // Optional: Width of the generated video (default: 512)
+    "height": number,            // Optional: Height of the generated video (default: 512)
+    "video_length": number       // Optional: Length of the video in seconds (default: 4)
 }
 ```
 
@@ -114,7 +126,10 @@ curl -X POST http://localhost:5000/api/wan-text-to-video \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "cinematic scene of a sunset",
-    "negative_prompt": "blurry, low quality"
+    "negative_prompt": "blurry, low quality",
+    "width": 768,
+    "height": 432,
+    "video_length": 6
   }'
 ```
 
