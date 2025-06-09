@@ -675,6 +675,86 @@ def download_file(filename):
         logger.error(f"Error downloading file {filename}: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/text-to-video', methods=['POST'])
+@api_key_required
+def text_to_video():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+            
+        prompt = data.get('prompt')
+        if not prompt:
+            return jsonify({'error': 'prompt is required'}), 400
+            
+        # Get optional parameters with defaults
+        width = data.get('width', 1920)  # Default from workflow
+        height = data.get('height', 1088)  # Default from workflow
+        video_length = data.get('video_length', 4)  # Default 4 seconds
+        
+        # Validate numeric parameters
+        try:
+            width = int(width)
+            height = int(height)
+            video_length = int(video_length)
+            if width <= 0 or height <= 0 or video_length <= 0:
+                return jsonify({'error': 'width, height, and video_length must be positive integers'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'error': 'width, height, and video_length must be valid integers'}), 400
+        
+        logger.debug(f"Processing request with prompt: {prompt}")
+        
+        # Load the Wan workflow template
+        try:
+            workflow = load_workflow('text_to_video_wan')
+        except Exception as e:
+            logger.error(f"Error loading workflow: {str(e)}")
+            return jsonify({'error': 'Failed to load workflow template'}), 500
+        
+        # Update the workflow with the provided parameters
+        workflow['6']['inputs']['text'] = prompt  # Positive prompt
+        workflow['40']['inputs']['width'] = width
+        workflow['40']['inputs']['height'] = height
+        workflow['40']['inputs']['length'] = video_length * 8  # Convert seconds to frames (8 fps)
+        
+        # Format the workflow for ComfyUI
+        prompt_data = {
+            "prompt": workflow,
+            "client_id": "text_to_video_api"
+        }
+        
+        logger.debug(f"Sending workflow to ComfyUI: {json.dumps(prompt_data)}")
+        
+        # Send the workflow to ComfyUI with no-cache headers
+        try:
+            response = requests.post(
+                f"{COMFYUI_URL}/prompt", 
+                json=prompt_data,
+                headers=NO_CACHE_HEADERS
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Error sending workflow to ComfyUI: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"ComfyUI response: {e.response.text}")
+            return jsonify({'error': 'Failed to communicate with ComfyUI server'}), 500
+            
+        prompt_id = response.json().get('prompt_id')
+        if not prompt_id:
+            logger.error("No prompt_id in ComfyUI response")
+            return jsonify({'error': 'Invalid response from ComfyUI server'}), 500
+            
+        logger.debug(f"Got prompt_id: {prompt_id}")
+        
+        return jsonify({
+            'process_id': prompt_id,
+            'status': 'queued'
+        })
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in text_to_video: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 # Add template filter for datetime formatting
 @app.template_filter('datetime')
 def format_datetime(timestamp):
