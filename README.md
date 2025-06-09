@@ -171,6 +171,45 @@ curl -X POST http://localhost:3000/api/framepack-image-to-video \
   -F "prompt=smooth transition between scenes"
 ```
 
+## 5. Text-to-Video
+Generate videos from text using the Wan 2.1 model.
+
+**Endpoint:** `/api/text-to-video`  
+**Method:** `POST`  
+**Content-Type:** `application/json`  
+**Authentication:** Required
+
+### Request Parameters
+```json
+{
+    "prompt": "string",           // Required: Text description of the video to generate
+    "width": number,             // Optional: Width of the generated video (default: 1920)
+    "height": number,            // Optional: Height of the generated video (default: 1088)
+    "video_length": number       // Optional: Length of the video in seconds (default: 4)
+}
+```
+
+### Response
+```json
+{
+    "process_id": "string",  // ID to track the generation process
+    "status": "queued"      // Initial status of the generation
+}
+```
+
+### Example
+```bash
+curl -X POST http://localhost:3000/api/text-to-video \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Key your-api-key" \
+  -d '{
+    "prompt": "a fox moving quickly in a beautiful winter scenery",
+    "width": 1920,
+    "height": 1088,
+    "video_length": 4
+  }'
+```
+
 ## Check Generation Status
 To check the status of your generation, use the status endpoint:
 
