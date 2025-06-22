@@ -30,7 +30,7 @@
     },
     "9": {
       "inputs": {
-        "filename_prefix": "20250621/image_%KSampler.seed%",
+        "filename_prefix": "ComfyUI",
         "images": [
           "8",
           0
