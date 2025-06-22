@@ -57,7 +57,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # ComfyUI API endpoint
-COMFYUI_URL = "http://localhost:8188"
+COMFYUI_URL = "http://localhost:3000"
 
 # Headers to prevent caching
 NO_CACHE_HEADERS = {
@@ -309,6 +309,182 @@ def flux_text_to_image():
         
     except Exception as e:
         logger.error(f"Unexpected error in flux_text_to_image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/flux-dev-text-to-image', methods=['POST'])
+@api_key_required
+def flux_dev_text_to_image():
+    try:
+        # Validate request data
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+            
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+            
+        prompt = data.get('prompt')
+        if not prompt:
+            return jsonify({'error': 'prompt is required'}), 400
+        
+        # Get width and height with defaults from the workflow
+        width = data.get('width', 1216)
+        height = data.get('height', 832)
+        
+        # Validate width and height are positive integers
+        try:
+            width = int(width)
+            height = int(height)
+            if width <= 0 or height <= 0:
+                return jsonify({'error': 'width and height must be positive integers'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'error': 'width and height must be valid integers'}), 400
+        
+        logger.debug(f"Processing Flux Dev request with prompt: {prompt}, dimensions: {width}x{height}")
+        
+        # Load the Flux NSFW workflow template
+        try:
+            workflow = load_workflow('Flux NSFW')
+        except Exception as e:
+            logger.error(f"Error loading workflow: {str(e)}")
+            return jsonify({'error': 'Failed to load workflow template'}), 500
+        
+        # Update the workflow with the provided prompt and dimensions
+        workflow['6']['inputs']['text'] = prompt
+        
+        # Update dimensions in the workflow (both EmptySD3LatentImage and ModelSamplingFlux)
+        workflow['27']['inputs']['width'] = width
+        workflow['27']['inputs']['height'] = height
+        workflow['30']['inputs']['width'] = width
+        workflow['30']['inputs']['height'] = height
+        
+        # Ensure the diffusion model is set to flux1-dev.safetensors
+        workflow['12']['inputs']['unet_name'] = "flux1-dev.safetensors"
+        
+        # Format the workflow for ComfyUI
+        prompt_data = {
+            "prompt": workflow,
+            "client_id": "flux_dev_api"
+        }
+        
+        logger.debug(f"Sending Flux Dev workflow to ComfyUI: {json.dumps(prompt_data)}")
+        
+        # Send the workflow to ComfyUI with no-cache headers
+        try:
+            response = requests.post(
+                f"{COMFYUI_URL}/prompt", 
+                json=prompt_data,
+                headers=NO_CACHE_HEADERS
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Error sending workflow to ComfyUI: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"ComfyUI response: {e.response.text}")
+            return jsonify({'error': 'Failed to communicate with ComfyUI server'}), 500
+            
+        prompt_id = response.json().get('prompt_id')
+        if not prompt_id:
+            logger.error("No prompt_id in ComfyUI response")
+            return jsonify({'error': 'Invalid response from ComfyUI server'}), 500
+            
+        logger.debug(f"Got prompt_id: {prompt_id}")
+        
+        return jsonify({
+            'process_id': prompt_id,
+            'status': 'queued'
+        })
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in flux_dev_text_to_image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/flux-schnell-text-to-image', methods=['POST'])
+@api_key_required
+def flux_schnell_text_to_image():
+    try:
+        # Validate request data
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+            
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+            
+        prompt = data.get('prompt')
+        if not prompt:
+            return jsonify({'error': 'prompt is required'}), 400
+        
+        # Get width and height with defaults from the workflow
+        width = data.get('width', 1216)
+        height = data.get('height', 832)
+        
+        # Validate width and height are positive integers
+        try:
+            width = int(width)
+            height = int(height)
+            if width <= 0 or height <= 0:
+                return jsonify({'error': 'width and height must be positive integers'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'error': 'width and height must be valid integers'}), 400
+        
+        logger.debug(f"Processing Flux Schnell request with prompt: {prompt}, dimensions: {width}x{height}")
+        
+        # Load the Flux NSFW workflow template
+        try:
+            workflow = load_workflow('Flux NSFW')
+        except Exception as e:
+            logger.error(f"Error loading workflow: {str(e)}")
+            return jsonify({'error': 'Failed to load workflow template'}), 500
+        
+        # Update the workflow with the provided prompt and dimensions
+        workflow['6']['inputs']['text'] = prompt
+        
+        # Update dimensions in the workflow (both EmptySD3LatentImage and ModelSamplingFlux)
+        workflow['27']['inputs']['width'] = width
+        workflow['27']['inputs']['height'] = height
+        workflow['30']['inputs']['width'] = width
+        workflow['30']['inputs']['height'] = height
+        
+        # Set the diffusion model to flux-schnell.safetensors
+        workflow['12']['inputs']['unet_name'] = "flux-schnell.safetensors"
+        
+        # Format the workflow for ComfyUI
+        prompt_data = {
+            "prompt": workflow,
+            "client_id": "flux_schnell_api"
+        }
+        
+        logger.debug(f"Sending Flux Schnell workflow to ComfyUI: {json.dumps(prompt_data)}")
+        
+        # Send the workflow to ComfyUI with no-cache headers
+        try:
+            response = requests.post(
+                f"{COMFYUI_URL}/prompt", 
+                json=prompt_data,
+                headers=NO_CACHE_HEADERS
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Error sending workflow to ComfyUI: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"ComfyUI response: {e.response.text}")
+            return jsonify({'error': 'Failed to communicate with ComfyUI server'}), 500
+            
+        prompt_id = response.json().get('prompt_id')
+        if not prompt_id:
+            logger.error("No prompt_id in ComfyUI response")
+            return jsonify({'error': 'Invalid response from ComfyUI server'}), 500
+            
+        logger.debug(f"Got prompt_id: {prompt_id}")
+        
+        return jsonify({
+            'process_id': prompt_id,
+            'status': 'queued'
+        })
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in flux_schnell_text_to_image: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/status/<process_id>', methods=['GET'])
@@ -761,5 +937,5 @@ def format_datetime(timestamp):
     return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    app.run(host='0.0.0.0', port=3002, debug=True)
 
