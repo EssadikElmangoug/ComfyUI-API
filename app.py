@@ -814,8 +814,9 @@ def download_file(filename):
     try:
         # Check multiple possible locations for the file
         possible_paths = [
-            f"/workspace/ComfyUI/output/{filename}",
-            f"/tmp/latentsync_b9e6a424/latentsync_1076d504/{filename}"
+            # f"/workspace/ComfyUI/output/{filename}",
+            f"/ComfyUI/output/{filename}",
+            # f"/tmp/latentsync_b9e6a424/latentsync_1076d504/{filename}"
         ]
         
         file_path = None
