@@ -11,6 +11,7 @@ import secrets
 import string
 from datetime import datetime
 from functools import wraps
+import random
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session management
@@ -361,6 +362,10 @@ def flux_dev_text_to_image():
         # Ensure the diffusion model is set to flux1-dev.safetensors
         workflow['12']['inputs']['unet_name'] = "flux1-dev.safetensors"
         
+        # Generate a random seed for each request
+        random_seed = random.randint(1, 999999999999999)
+        workflow['25']['inputs']['noise_seed'] = random_seed
+        
         # Format the workflow for ComfyUI
         prompt_data = {
             "prompt": workflow,
@@ -448,6 +453,10 @@ def flux_schnell_text_to_image():
         
         # Set the diffusion model to flux-schnell.safetensors
         workflow['12']['inputs']['unet_name'] = "flux-schnell.safetensors"
+        
+        # Generate a random seed for each request
+        random_seed = random.randint(1, 999999999999999)
+        workflow['25']['inputs']['noise_seed'] = random_seed
         
         # Format the workflow for ComfyUI
         prompt_data = {
